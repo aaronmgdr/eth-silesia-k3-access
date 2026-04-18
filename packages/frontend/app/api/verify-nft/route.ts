@@ -51,15 +51,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Contract not configured' }, { status: 500 });
     }
 
-    // Check on-chain membership
-    const balance = await publicClient.readContract({
+    // Check on-chain membership (time-aware)
+    const hasValid = await publicClient.readContract({
       address: CONTRACT_ADDRESS,
       abi: NFT_ABI,
-      functionName: 'balanceOf',
+      functionName: 'hasValidMembership',
       args: [address],
     });
 
-    if (balance === 0n) {
+    if (!hasValid) {
       return NextResponse.json({ error: 'No active membership found' }, { status: 403 });
     }
 

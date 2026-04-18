@@ -4,15 +4,17 @@ import { useDisconnect } from 'wagmi';
 import { useAppKit, useAppKitAccount } from '@reown/appkit/react';
 import { useRouter } from 'next/navigation';
 import { ConnectButton } from '@/components/ConnectButton';
+import { useAuth } from '@/context/AuthContext';
 
 export default function Home() {
-  const { address } = useAppKitAccount();
+  const { address, isConnected } = useAppKitAccount();
   const { disconnect } = useDisconnect();
-  
+  const { hasValidMembership } = useAuth();
+
   const router = useRouter();
 
-  const handleBuyClick = () => {
-    router.push('/buy');
+  const handleAccessClick = () => {
+    router.push('/access');
   };
 
   return (
@@ -51,14 +53,14 @@ export default function Home() {
             </h3>
           </div>
           <button
-            onClick={handleBuyClick}
+            onClick={handleAccessClick}
             style={{
               fontSize: '28px',
               padding: '24px 60px',
               margin: '0 auto',
             }}
           >
-            Buy Day Pass
+            {isConnected && hasValidMembership ? 'My Access' : 'Buy Day Pass'}
           </button>
         </div>
       </main>

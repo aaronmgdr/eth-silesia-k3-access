@@ -33,25 +33,7 @@ When ready to ship Kolektyw3 Access to production.
    - Point domain to Vercel
    - Example: `memberships.kolektyw3.pl`
 
-## Smart Contract Deployment
 
-```bash
-cd packages/contracts
-source .env  # load PRIVATE_KEY and other vars from packages/contracts/.env
-
-forge create src/SilesiaAccessNFT.sol:SilesiaAccessNFT \
-  --rpc-url https://mainnet.base.org \
-  --private-key $PRIVATE_KEY \
-  --constructor-args 0x000000000022D473030F116dFC393097967dFd67 \
-                     0x833589fCD6eDb6E08f4c7C32D4f71b1566469c18 \
-                     0x<TREASURY_ADDRESS> \
-                     0x<OWNER_ADDRESS>
-
-# Verify on BaseScan
-forge verify-contract --chain-id 8453 \
-  0x<DEPLOYED_ADDRESS> \
-  src/SilesiaAccessNFT.sol:SilesiaAccessNFT
-```
 
 ## Stripe Setup
 

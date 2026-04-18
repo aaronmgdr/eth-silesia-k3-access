@@ -16,13 +16,15 @@ interface PermitSingle {
 export function getPermit2Types() {
   return {
     PermitSingle: [
-      { name: 'details', type: 'TokenPermissions' },
+      { name: 'details', type: 'PermitDetails' },
       { name: 'spender', type: 'address' },
       { name: 'sigDeadline', type: 'uint256' },
     ],
-    TokenPermissions: [
+    PermitDetails: [
       { name: 'token', type: 'address' },
       { name: 'amount', type: 'uint160' },
+      { name: 'nonce', type: 'uint48' },
+      { name: 'deadline', type: 'uint256' },
     ],
   };
 }
@@ -30,6 +32,7 @@ export function getPermit2Types() {
 export function getPermit2Domain(chainId: number) {
   return {
     name: 'Permit2',
+    version: '1',
     chainId,
     verifyingContract: PERMIT2_ADDRESS,
   };

@@ -2,24 +2,21 @@
 
 import { useEffect, useState } from 'react';
 import { Address, formatUnits } from 'viem';
-import { useWriteContract, useSignTypedData, useChainId } from 'wagmi';
+import { useWriteContract, useChainId } from 'wagmi';
 import { useAppKitAccount } from '@reown/appkit/react';
 import { useAuth } from '@/context/AuthContext';
-import { CONTRACT_ADDRESS, NFT_ABI, checkMembership, publicClient, USDC_ADDRESS } from '@/lib/contract';
-import { createPermitSingle, getPermit2Domain, getPermit2Types } from '@/lib/permit2';
+import { CONTRACT_ADDRESS, NFT_ABI, ERC20_ABI, checkMembership, publicClient, USDC_ADDRESS } from '@/lib/contract';
 
 const USDC_PRICE = 20_000_000n; // 20 USDC (6 decimals)
 
 export function DayPassPurchase() {
-  const chainId = useChainId();
   const { address } = useAppKitAccount();
-  const { code, setCode, siweSession } = useAuth();
+  const { code, setCode, siweSession, hasValidMembership, checkValidMembership } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [step, setStep] = useState<'info' | 'checking' | 'signing' | 'minting' | 'extending' | 'confirming' | 'verifying' | 'done'>('info');
+  const [step, setStep] = useState<'info' | 'checking' | 'approving' | 'minting' | 'confirming' | 'verifying' | 'done'>('info');
   const [hasExistingNFT, setHasExistingNFT] = useState(false);
   const { writeContractAsync } = useWriteContract();
-  const { signTypedDataAsync } = useSignTypedData();
 
   // Check for existing membership on mount and when address changes
   useEffect(() => {
@@ -28,14 +25,55 @@ export function DayPassPurchase() {
       try {
         const hasMembership = await checkMembership(address as Address);
         setHasExistingNFT(hasMembership);
+
+        // Check if membership is still valid
+        if (hasMembership) {
+          await checkValidMembership(address as Address);
+
+          // Get code for existing valid membership
+          if (hasValidMembership && siweSession) {
+            try {
+              await getCode();
+            } catch (err) {
+              console.error('Error getting code:', err);
+            }
+          }
+        }
       } catch (err) {
         console.error('Error checking membership:', err);
       }
     };
     checkExisting();
-  }, [address]);
+  }, [address, siweSession, hasValidMembership, checkValidMembership]);
 
-  const handleGetCode = async () => {
+
+  async function getCode() {
+    if (!siweSession) throw new Error('Not authenticated — please reconnect your wallet');
+    const response = await fetch('/api/verify-nft', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ address, message: siweSession.message, signature: siweSession.signature }),
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to verify membership');
+    }
+
+    const data = await response.json();
+    setCode(data.code);
+  }
+
+
+  const intentToPurchase = async () => {
+    // If they already have valid membership and code, just show it
+    if (hasValidMembership && code) {
+      return;
+    } else if (hasValidMembership) {
+      await getCode()
+      return;
+    }
+
     if (!address) {
       setError('Wallet not connected');
       return;
@@ -52,79 +90,66 @@ export function DayPassPurchase() {
     try {
       console.log('Starting purchase flow for', address);
 
-      // Step 0: Check USDC balance
+      // Step 1: Check USDC balance
       setStep('checking');
       const usdcBalance = await publicClient.readContract({
         address: USDC_ADDRESS,
-        abi: [{ name: 'balanceOf', type: 'function', inputs: [{ name: 'account', type: 'address' }], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' }],
+        abi: ERC20_ABI,
         functionName: 'balanceOf',
         args: [address as Address],
       });
       if (usdcBalance < USDC_PRICE) {
-        throw new Error(`Insufficient USDC balance. You need 20 USDC but have ${formatUnits(usdcBalance, 6)} USDC.`);
+        throw new Error(`Insufficient USDC. You have ${formatUnits(usdcBalance, 6)} USDC but need 20.`);
       }
 
-      // Check current membership status
-      const currentHasMembership = await checkMembership(address as Address);
-      const actionStep = currentHasMembership ? 'extending' : 'minting';
-      console.log('Membership check:', currentHasMembership, 'Action:', actionStep);
+      // Step 2: Check and request approval
+      setStep('approving');
+   
 
-      // Step 1: Create permit and sign
-      setStep('signing');
-      const permitSingle = createPermitSingle(USDC_PRICE, CONTRACT_ADDRESS);
-      console.log('Permit details:', permitSingle);
-
-      const signature = await signTypedDataAsync({
-        domain: getPermit2Domain(chainId),
-        types: getPermit2Types(),
-        primaryType: 'PermitSingle',
-        message: {
-          details: {
-            token: permitSingle.details.token,
-            amount: permitSingle.details.amount,
-          },
-          spender: permitSingle.spender,
-          sigDeadline: permitSingle.sigDeadline,
-        },
+      console.log('Requesting USDC approval...');
+      const approveTx = await writeContractAsync({
+        address: USDC_ADDRESS,
+        abi: ERC20_ABI,
+        functionName: 'approve',
+        args: [CONTRACT_ADDRESS, USDC_PRICE],
       });
-      console.log('Signature received:', signature);
+      console.log('Approval tx submitted:', approveTx);
 
-      // Step 2: Call mintWithPermit (or extend)
-      setStep(actionStep as 'minting' | 'extending');
-      console.log('Calling contract with:', { CONTRACT_ADDRESS, args: [address, signature, permitSingle] });
+      await publicClient.waitForTransactionReceipt({ hash: approveTx });
+      console.log('Approval confirmed');
 
-      const txHash = await writeContractAsync({
+        const allowance = await publicClient.readContract({
+        address: USDC_ADDRESS,
+        abi: ERC20_ABI,
+        functionName: 'allowance',
+        args: [address as Address, CONTRACT_ADDRESS],
+      });
+      console.log('Current allowance after approval:', formatUnits(allowance, 6), 'USDC');
+      if (allowance < USDC_PRICE) {
+        throw new Error('Approval failed or not sufficient');
+      }
+      // Step 3: Mint NFT
+      setStep('minting');
+      console.log('Calling mint...');
+      const mintTx = await writeContractAsync({
         address: CONTRACT_ADDRESS,
         abi: NFT_ABI,
-        functionName: 'mintWithPermit',
-        args: [address as Address, signature as `0x${string}`, permitSingle],
+        functionName: 'mint',
+        args: [address as Address],
       });
-      console.log('Tx submitted:', txHash);
+      console.log('Mint tx submitted:', mintTx);
 
       setStep('confirming');
-      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: mintTx });
       if (receipt.status !== 'success') {
-        throw new Error('Transaction reverted');
+        throw new Error('Mint transaction failed');
       }
-      console.log('Tx confirmed:', receipt.transactionHash);
+      console.log('Mint confirmed');
 
-      if (!siweSession) throw new Error('Not authenticated — please reconnect your wallet');
 
-      // Step 3: Verify membership and get code
+      // Step 4: Verify membership and get code
       setStep('verifying');
-      const response = await fetch('/api/verify-nft', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address, message: siweSession.message, signature: siweSession.signature }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to verify membership');
-      }
-
-      const data = await response.json();
-      setCode(data.code);
+      await getCode();
       setStep('done');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
@@ -137,22 +162,23 @@ export function DayPassPurchase() {
   };
     const textColor = '#ffffff' 
 
-  if (step === 'done' && code) {
+
+  if ((step === 'done' && code) || (hasValidMembership && code)) {
     return (
       <div className="w-full max-w-md">
-        <div style={{ backgroundColor: '#E2E6E9', borderRadius: '12px', padding: '32px', textAlign: 'center' }}>
-          <h3 className="text-24 font-satoshi font-bold mb-4" style={{ color: '#1F262E' }}>
-            ✓ Access Granted!
+        <div  className='bg-gradient-to-r from-[#8891C255] to-[#6F7FD799] shadow-[0_0_30px_rgba(111,127,215,0.1)]' style={{ borderRadius: '12px', padding: '32px', textAlign: 'center' }}>
+          <h3 className="text-2xl font-bold text-white  mb-4 "style={{ color: '#ffffff' }}>
+            Kolektyw3 Day Access
           </h3>
-          <p className="text-14 mb-6" style={{ color: '#1F262E' }}>
-            Your membership is active. Use this code at the entrance:
+          <p className="text-20 font-sat mb-6 centered" style={{ fontFamily: 'Satoshi, system-ui, sans-serif', fontSize: '16px', fontWeight: 400, lineHeight: '26px', color: 'rgba(255, 255, 255, 0.8)'} }>
+            Your membership is active.<br/> Use this code at the entrance:
           </p>
-          <div style={{ backgroundColor: '#FFFFFF', borderRadius: '12px', padding: '24px', marginBottom: '24px', border: '2px solid #1F262E' }}>
-            <p className="text-60 font-bold tracking-widest font-ui-monospace" style={{ color: textColor }}>
-              {code}
-            </p>
+          <div style={{ borderRadius: '12px', padding: '16px', marginBottom: '16px', border: '2px solid #dfdfdf' }}>
+            <code className="text-2xl font-bold tracking-widest font-ui-monospace" style={{ color: textColor, letterSpacing: '0.8ch' }}>
+              {code || 12345}
+            </code>
           </div>
-          <p className="text-12" style={{ color: '#1F262E' }}>
+          <p className="text-12" style={{ fontFamily: 'Satoshi, system-ui, sans-serif', fontSize: '16px', fontWeight: 400, lineHeight: '26px', color: 'rgba(255, 255, 255, 0.8)'}}>
             Valid for 24 hours from purchase
           </p>
         </div>
@@ -167,10 +193,10 @@ export function DayPassPurchase() {
         <div className="flex justify-between items-start mb-6">
           <div>
             <h3 className="text-2xl font-bold text-white" style={{ color: '#ffffff' }}>
-              {hasExistingNFT ? 'Extend Membership' : 'Day Pass'}
+              {hasValidMembership ? 'My Access' : hasExistingNFT ? 'New Day Pass' : 'Day Pass'}
             </h3>
             <p style={{ fontFamily: 'Satoshi, system-ui, sans-serif', fontSize: '16px', fontWeight: 400, lineHeight: '24px', color: '#FFFFFF', margin: '0 0 16px', padding: 0 }}>
-              {hasExistingNFT ? 'Extend your 24-hour access' : '24-hour access to the workspace'}
+              {hasValidMembership ? 'Your membership is active' : hasExistingNFT ? 'Renew your 24-hour access' : '24-hour access to the workspace'}
             </p>
           </div>
           <div className="text-right">
@@ -203,16 +229,16 @@ export function DayPassPurchase() {
         )}
 
         <button
-          onClick={handleGetCode}
-          disabled={loading || !address}
+          onClick={intentToPurchase}
+          disabled={loading || !address || hasValidMembership}
           style={{ width: '100%' }}
         >
-          {!loading && !hasExistingNFT && 'Get Access Code'}
-          {!loading && hasExistingNFT && 'Extend Access'}
-          {loading && step === 'checking' && 'Checking membership...'}
-          {loading && step === 'signing' && 'Signing...'}
+          {!loading && hasValidMembership && 'Approve Sign-In in wallet to view Access Code'}
+          {!loading && !hasValidMembership && !hasExistingNFT && 'Get Access Code'}
+          {!loading && !hasValidMembership && hasExistingNFT && 'Extend Access'}
+          {loading && step === 'checking' && 'Checking balance...'}
+          {loading && step === 'approving' && 'Approving USDC...'}
           {loading && step === 'minting' && 'Minting NFT...'}
-          {loading && step === 'extending' && 'Extending membership...'}
           {loading && step === 'confirming' && 'Confirming transaction...'}
           {loading && step === 'verifying' && 'Verifying...'}
         </button>
