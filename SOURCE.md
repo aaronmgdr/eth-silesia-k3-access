@@ -1,0 +1,1 @@
+Created for ETHSilesia Hackathon 2026

@@ -1,0 +1,6 @@
+.claude/skills/**
+.claude/skills/agent-onboarding/SKILL.md
+.context/
+node_modules
+.claude/.DS_Store
+
