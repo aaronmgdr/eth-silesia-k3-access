@@ -2,15 +2,17 @@
 
 import { useAppKit, useAppKitAccount, useDisconnect } from '@reown/appkit/react';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { DayPassPurchase } from '@/components/DayPassPurchase';
 import { ConnectButton } from '@/components/ConnectButton';
+import { ReceiptForm } from '@/components/ReceiptForm';
 
 export default function AccessPage() {
   const { address, isConnected } = useAppKitAccount();
   const router = useRouter();
   const {open} = useAppKit(); // Initialize AppKit to get access to the open function
   const {disconnect} = useDisconnect();
+  const [showReceipt, setShowReceipt] = useState(false);
   // Redirect to home if not connected
   useEffect(() => {
     if (!isConnected || !address) {
@@ -51,8 +53,30 @@ export default function AccessPage() {
       </header>
 
       {/* Main Content */}
-      <main className="flex items-center justify-center">
+      <main className="flex flex-col items-center justify-center gap-4">
         <DayPassPurchase />
+        <div className="w-full max-w-md">
+          {showReceipt ? (
+            <ReceiptForm address={address} onClose={() => setShowReceipt(false)} />
+          ) : (
+            <button
+              onClick={() => setShowReceipt(true)}
+              style={{
+                width: '100%',
+                background: 'transparent',
+                border: '1px solid rgba(255,255,255,0.35)',
+                color: 'rgba(255,255,255,0.7)',
+                padding: '10px 20px',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontFamily: 'Satoshi, system-ui, sans-serif',
+                cursor: 'pointer',
+              }}
+            >
+              I need a receipt
+            </button>
+          )}
+        </div>
       </main>
     </div>
   );
