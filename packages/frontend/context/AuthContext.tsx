@@ -6,6 +6,7 @@ import { useAppKitAccount } from '@reown/appkit/react';
 import { Address } from 'viem';
 import { createSiweMessage } from 'viem/siwe';
 import { publicClient, CONTRACT_ADDRESS, NFT_ABI } from '@/lib/contract';
+import { activeChainId } from '@/lib/chain';
 
 export interface SiweSession {
   message: string;
@@ -67,7 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           statement: 'Sign in to Kolektyw3 Access.',
           uri: window.location.origin,
           version: '1',
-          chainId: 84532,
+          chainId: activeChainId,
           nonce,
         });
 

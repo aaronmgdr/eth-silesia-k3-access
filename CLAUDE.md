@@ -138,7 +138,7 @@ kolektyw3-access/
 │   │   ├── scripts/deploy-local.sh
 │   │   ├── foundry.toml
 │   │   └── .env.example
-│   └── app/                # Next.js frontend
+│   └── frontend/                # Next.js frontend
 │       ├── app/
 │       │   ├── page.tsx
 │       │   ├── api/verify-nft/

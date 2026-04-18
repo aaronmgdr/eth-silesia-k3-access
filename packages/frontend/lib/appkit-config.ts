@@ -1,21 +1,11 @@
 import { createAppKit } from '@reown/appkit/react';
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
-import { AppKitNetwork, baseSepolia, Chain } from '@reown/appkit/networks';
+import type { AppKitNetwork } from '@reown/appkit/networks';
+import { activeChain } from './chain';
 
 const projectId = process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID || '';
 
-
-const localChain: AppKitNetwork = {
-  ...baseSepolia,
-  id: 84532,
-  name: 'Localhost',
-    rpcUrls: {
-      default: { http: ['localhost:8545'] },
-  },
-  testnet: true,
-};
-
-const networks: [AppKitNetwork] = [localChain];
+const networks: [AppKitNetwork] = [activeChain];
 
 const wagmiAdapter = new WagmiAdapter({
   networks,
