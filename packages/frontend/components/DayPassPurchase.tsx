@@ -11,6 +11,17 @@ import { getInvoiceData, clearInvoiceData } from '@/lib/invoice-storage';
 
 const USDC_PRICE = 20_000_000n; // 20 USDC (6 decimals)
 
+function summarizeError(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err);
+  if (/user (rejected|denied|cancelled|canceled)/i.test(msg)) return 'Transaction rejected.';
+  if (/insufficient funds/i.test(msg)) return 'Insufficient funds to cover gas.';
+  if (/insufficient usdc/i.test(msg)) return msg.split('.')[0] + '.';
+  if (/network|fetch|connection/i.test(msg)) return 'Network error — please try again.';
+  // First sentence only, max 120 chars
+  const first = msg.split(/\n|\. /)[0].trim();
+  return first.length > 120 ? first.slice(0, 117) + '…' : first;
+}
+
 interface DayPassPurchaseProps {
   onMintComplete?: (txHash: string) => void;
 }
@@ -53,8 +64,6 @@ export function DayPassPurchase({ onMintComplete }: DayPassPurchaseProps = {}) {
   }, [address, siweSession, hasValidMembership, checkValidMembership]);
 
 
-  const lsKey = address ? `kolektyw3:code:${address.toLowerCase()}` : null;
-
   async function getCode() {
     if (!siweSession) throw new Error('Not authenticated — please reconnect your wallet');
     const response = await fetch('/api/verify-nft', {
@@ -64,19 +73,15 @@ export function DayPassPurchase({ onMintComplete }: DayPassPurchaseProps = {}) {
     });
 
     if (!response.ok) {
-      if (hasValidMembership && lsKey) {
-        const cached = localStorage.getItem(lsKey);
-        if (cached) { setCode(cached); return; }
-      }
       const data = await response.json();
       throw new Error(data.error || 'Failed to verify membership');
     }
 
     const data = await response.json();
-    setCode(data.code);
-    if (lsKey) {
-      try { localStorage.setItem(lsKey, data.code); } catch {}
-    }
+    console.log("AC",data)
+    const code = typeof data.code === 'string' && /^\d+$/.test(data.code) ? data.code : null;
+    if (!code) throw new Error('No access code available');
+    setCode(code);
   }
 
   async function autoSubmitInvoiceIfSaved(mintTxHash: string) {
@@ -198,9 +203,8 @@ export function DayPassPurchase({ onMintComplete }: DayPassPurchaseProps = {}) {
       await getCode();
       setStep('done');
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       console.error('Purchase flow error:', err);
-      setError(errorMessage);
+      setError(summarizeError(err));
       setStep('info');
     } finally {
       setLoading(false);
@@ -221,7 +225,7 @@ export function DayPassPurchase({ onMintComplete }: DayPassPurchaseProps = {}) {
           </p>
           <div style={{ borderRadius: '12px', padding: '16px', marginBottom: '16px', border: '2px solid #dfdfdf' }}>
             <code className="text-2xl font-bold tracking-widest font-ui-monospace" style={{ color: textColor, letterSpacing: '0.8ch' }}>
-              {code === 'undefined' && site.demoMode ?  '123456' :  (code  || (site.demoMode ? '123456' : '—'))}
+              {code || (site.demoMode ? '123456' : '—')}
             </code>
           </div>
           <p className="text-12" style={{ fontFamily: 'Satoshi, system-ui, sans-serif', fontSize: '16px', fontWeight: 400, lineHeight: '26px', color: 'rgba(255, 255, 255, 0.8)'}}>
@@ -281,7 +285,7 @@ export function DayPassPurchase({ onMintComplete }: DayPassPurchaseProps = {}) {
         >
           {!loading && !siweSession && hasValidMembership  && 'Approve Sign-In in wallet to view Access Code'}
           {!loading && !hasValidMembership && !hasExistingNFT && 'Get Access Code'}
-          {!loading && !hasValidMembership && hasExistingNFT && 'Extend Access'}
+          {!loading && !hasValidMembership && hasExistingNFT && 'Renew Access'}
           {loading && step === 'checking' && 'Checking balance...'}
           {loading && step === 'approving' && 'Approving USDC...'}
           {loading && step === 'minting' && 'Minting NFT...'}

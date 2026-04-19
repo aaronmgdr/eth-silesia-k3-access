@@ -1,5 +1,6 @@
 import { makeRedis } from './redis';
 import type { Redis } from '@upstash/redis';
+
 /**
  * Code Service - Abstracts access code management
  *
@@ -52,6 +53,16 @@ interface CodeServiceInterface {
   getStatus(): Promise<CodeStatus>;
 }
 
+// Upstash REST client auto-deserializes JSON — a stored string like "223456"
+// may come back as the number 223456. This normalizes any return type to string.
+function coerceToString(val: unknown): string | null {
+  if (val === null || val === undefined) return null;
+  if (typeof val === 'string') return val;
+  if (typeof val === 'number') return String(val);
+  if (typeof val === 'object' && 'code' in val) return String((val as Record<string, unknown>).code);
+  return null;
+}
+
 /**
  * Redis implementation using O(1) operations
  */
@@ -67,25 +78,20 @@ class RedisCodeService implements CodeServiceInterface {
   async dequeueCode(identifier: string): Promise<string | null> {
     // 1. Check if identifier already claimed a code (O(1))
     const existingCode = await this.redis.hget(this.claimsKey, identifier);
-    if (existingCode) {
-      console.log(`Identifier ${identifier} already claimed code`,existingCode);
-      // @ts-expect-error - handle both string and object formats
-      return typeof existingCode === 'string' ? existingCode : existingCode.code;
+    if (existingCode !== null && existingCode !== undefined) {
+      return coerceToString(existingCode);
     }
 
     // 2. Get fresh code from queue (O(1))
     const codeData = await this.redis.lpop(this.queueKey);
-    if (!codeData) {
-      return null;
-    }
+    if (!codeData) return null;
 
     const record = typeof codeData === 'string' ? JSON.parse(codeData) : codeData;
-    const code = (record as CodeRecord).code;
+    const code = coerceToString((record as CodeRecord).code);
+    if (!code) return null;
 
     // 3. Record the claim mapping
-    await this.redis.hset(this.claimsKey, {
-      [identifier]: code,
-    });
+    await this.redis.hset(this.claimsKey, { [identifier]: code });
 
     return code;
   }
@@ -104,7 +110,8 @@ class RedisCodeService implements CodeServiceInterface {
     const claims: Record<string, string> = {};
     if (rawClaims) {
       for (const [k, v] of Object.entries(rawClaims)) {
-        claims[k] = typeof v === 'string' ? v : (v as CodeRecord).code ?? String(v);
+        const code = coerceToString(v);
+        if (code) claims[k] = code;
       }
     }
 
