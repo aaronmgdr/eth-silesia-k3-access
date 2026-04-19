@@ -1,5 +1,5 @@
 import { makeRedis } from './redis';
-
+import type { Redis } from '@upstash/redis';
 /**
  * Code Service - Abstracts access code management
  *

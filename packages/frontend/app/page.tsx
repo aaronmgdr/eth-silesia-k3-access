@@ -42,7 +42,7 @@ export default function Home() {
       </header>
 
       {/* Main CTA */}
-      <main className="flex items-center justify-center min-h-[calc(100vh-120px)]">
+      <main className="flex items-center justify-center min-h-[calc(100vh-120px)] px-8">
         <div className="text-center space-y-12">
           <div className="space-y-4">
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-satoshi font-bold tracking-tight mb-5" style={{ color: '#FFFFFF' }}>
