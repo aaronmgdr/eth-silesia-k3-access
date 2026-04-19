@@ -23,7 +23,7 @@ export default function Home() {
       <header className="px-6 py-8">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <h1 className="text-24 font-satoshi font-bold" style={{ color: '#FFFFFF' }}>
-            kolektyw3
+            Kolektyw3
           </h1>
           {address ? (
             <button
@@ -46,10 +46,10 @@ export default function Home() {
         <div className="text-center space-y-12">
           <div className="space-y-4">
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-satoshi font-bold tracking-tight mb-5" style={{ color: '#FFFFFF' }}>
-              Kolektyw3 Access
+              Kolektyw3
             </h2>
             <h3 className="text-xl font-satoshi max-w-xl mx-auto" style={{ color: 'rgba(226, 230, 233, 0.6)' }}>
-              Get instant access to kolektyw3 coworking with 20 USDC
+              Get instant access to Kolektyw3 community space with 20 USDC
             </h3>
           </div>
           <button

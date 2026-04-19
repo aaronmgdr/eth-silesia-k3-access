@@ -22,10 +22,11 @@ export function ReceiptForm({ address, onClose }: ReceiptFormProps) {
     setLoading(true);
     setError(null);
     try {
+      const txHash = localStorage.getItem(`kolektyw3:mintTx:${address.toLowerCase()}`) ?? undefined;
       const res = await fetch('/api/receipt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address, name, streetAddress, vatType, vatNumber, email }),
+        body: JSON.stringify({ address, name, streetAddress, vatType, vatNumber, email, txHash }),
       });
       if (!res.ok) {
         const data = await res.json();

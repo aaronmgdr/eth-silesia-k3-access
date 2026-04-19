@@ -2,10 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isAddress } from 'viem';
 import { parseSiweMessage, verifySiweMessage } from 'viem/siwe';
 import { publicClient, CONTRACT_ADDRESS, NFT_ABI } from '@/lib/contract';
-import { getAccessCode } from '@/lib/code-service';
-import { nonceStore } from '@/app/api/nonce/route';
-
-const NONCE_TTL_MS = 5 * 60 * 1000;
+import { codeService } from '@/lib/code-service';
+import { nonceStore } from '@/lib/nonce-store';
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,16 +17,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing SIWE message or signature' }, { status: 400 });
     }
 
-    // Verify nonce was issued by us and hasn't expired
     const parsed = parseSiweMessage(message);
     const nonce = parsed.nonce;
-    const issuedAt = nonce ? nonceStore.get(nonce) : undefined;
+    const valid_nonce = nonce ? await nonceStore.exists(nonce) : false;
 
-    if (!issuedAt || Date.now() - issuedAt > NONCE_TTL_MS) {
+    if (!valid_nonce) {
       return NextResponse.json({ error: 'Invalid or expired nonce' }, { status: 401 });
     }
     if (nonce) {
-      nonceStore.delete(nonce); // one-time use
+      await nonceStore.delete(nonce); // one-time use
     }
     
 
@@ -63,7 +60,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No active membership found' }, { status: 403 });
     }
 
-    const { code } = await getAccessCode(address);
+    const code = await codeService.dequeueCode(address.toLowerCase());
     return NextResponse.json({ code });
   } catch (err) {
     console.error('verify-nft error:', err);

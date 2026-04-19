@@ -47,6 +47,8 @@ export function DayPassPurchase() {
   }, [address, siweSession, hasValidMembership, checkValidMembership]);
 
 
+  const lsKey = address ? `kolektyw3:code:${address.toLowerCase()}` : null;
+
   async function getCode() {
     if (!siweSession) throw new Error('Not authenticated — please reconnect your wallet');
     const response = await fetch('/api/verify-nft', {
@@ -56,12 +58,19 @@ export function DayPassPurchase() {
     });
 
     if (!response.ok) {
+      if (hasValidMembership && lsKey) {
+        const cached = localStorage.getItem(lsKey);
+        if (cached) { setCode(cached); return; }
+      }
       const data = await response.json();
       throw new Error(data.error || 'Failed to verify membership');
     }
 
     const data = await response.json();
     setCode(data.code);
+    if (lsKey) {
+      try { localStorage.setItem(lsKey, data.code); } catch {}
+    }
   }
 
 
@@ -145,6 +154,7 @@ export function DayPassPurchase() {
         throw new Error('Mint transaction failed');
       }
       console.log('Mint confirmed');
+      try { localStorage.setItem(`kolektyw3:mintTx:${address.toLowerCase()}`, mintTx); } catch {}
 
 
       // Step 4: Verify membership and get code
@@ -168,7 +178,7 @@ export function DayPassPurchase() {
       <div className="w-full max-w-md">
         <div  className='bg-gradient-to-r from-[#8891C255] to-[#6F7FD799] shadow-[0_0_30px_rgba(111,127,215,0.1)]' style={{ borderRadius: '12px', padding: '32px', textAlign: 'center' }}>
           <h3 className="text-2xl font-bold text-white  mb-4 "style={{ color: '#ffffff' }}>
-            Kolektyw3 Day Access
+            Kolektyw3
           </h3>
           <p className="text-20 font-sat mb-6 centered" style={{ fontFamily: 'Satoshi, system-ui, sans-serif', fontSize: '16px', fontWeight: 400, lineHeight: '26px', color: 'rgba(255, 255, 255, 0.8)'} }>
             Your membership is active.<br/> Use this code at the entrance:
@@ -196,7 +206,7 @@ export function DayPassPurchase() {
               {hasValidMembership ? 'My Access' : hasExistingNFT ? 'New Day Pass' : 'Day Pass'}
             </h3>
             <p style={{ fontFamily: 'Satoshi, system-ui, sans-serif', fontSize: '16px', fontWeight: 400, lineHeight: '24px', color: '#FFFFFF', margin: '0 0 16px', padding: 0 }}>
-              {hasValidMembership ? 'Your membership is active' : hasExistingNFT ? 'Renew your 24-hour access' : '24-hour access to the workspace'}
+              {hasValidMembership ? 'Your membership is active' : hasExistingNFT ? 'Renew your 24-hour access' : '24-hour access to Kolektyw3 community space'}
             </p>
           </div>
           <div className="text-right">
@@ -233,7 +243,7 @@ export function DayPassPurchase() {
           disabled={loading || !address || hasValidMembership}
           style={{ width: '100%' }}
         >
-          {!loading && hasValidMembership && 'Approve Sign-In in wallet to view Access Code'}
+          {!loading && !siweSession && hasValidMembership  && 'Approve Sign-In in wallet to view Access Code'}
           {!loading && !hasValidMembership && !hasExistingNFT && 'Get Access Code'}
           {!loading && !hasValidMembership && hasExistingNFT && 'Extend Access'}
           {loading && step === 'checking' && 'Checking balance...'}

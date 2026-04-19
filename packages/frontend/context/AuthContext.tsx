@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const message = createSiweMessage({
           domain: window.location.host,
           address: address as Address,
-          statement: 'Sign in to Kolektyw3 Access.',
+          statement: 'Sign in to Kolektyw3.',
           uri: window.location.origin,
           version: '1',
           chainId: activeChainId,

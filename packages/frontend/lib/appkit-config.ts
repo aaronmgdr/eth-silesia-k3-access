@@ -18,8 +18,8 @@ createAppKit({
   networks,
   projectId,
   metadata: {
-    name: 'Kolektyw3 Access',
-    description: 'Get instant access to kolektyw3 coworking',
+    name: 'Kolektyw3',
+    description: 'Get instant access to Kolektyw3 community space',
     url: typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001',
     icons: [],
   },

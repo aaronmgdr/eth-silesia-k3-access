@@ -50,7 +50,7 @@ export function VerifyAndGetCode() {
         <div className="bg-white border-2 border-green-400 rounded p-4 text-center mb-4">
           <p className="text-4xl font-bold tracking-widest text-green-700">{code}</p>
         </div>
-        <p className="text-sm text-green-600">Use this code to access kolektyw3 coworking space</p>
+        <p className="text-sm text-green-600">Use this code to access Kolektyw3 community space</p>
       </div>
     );
   }

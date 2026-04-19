@@ -1,15 +1,15 @@
 import { createPublicClient, http } from 'viem';
-// import { baseSepolia } from 'viem/chains';
+import { activeChain } from './chain';
 
 export const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`;
 export const PERMIT2_ADDRESS = (process.env.NEXT_PUBLIC_PERMIT2_ADDRESS ||
   '0x000000000022d473030F116dFC393097967DfD67') as `0x${string}`;
 export const USDC_ADDRESS = process.env.NEXT_PUBLIC_USDC_ADDRESS as `0x${string}`;
 
-// Determine chain based on RPC URL
 const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL || 'http://127.0.0.1:8545';
 
 export const publicClient = createPublicClient({
+  chain: activeChain as any,
   transport: http(rpcUrl),
 });
 

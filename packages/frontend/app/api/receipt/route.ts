@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Redis } from '@upstash/redis';
 import { isAddress } from 'viem';
+import { issueInvoice } from '@/lib/ksef';
+import { sendPdfInvoice } from '@/lib/invoice-sender';
 
 const TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
 
@@ -29,12 +31,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid VAT type' }, { status: 400 });
     }
 
+    const receipt = { ethAddress: address, txHash: txHash ?? null, name, streetAddress, vatType, vatNumber, email, createdAt: new Date().toISOString() };
+
     const key = `kolektyw3:receipt:${address.toLowerCase()}`;
-    await redis.set(
-      key,
-      JSON.stringify({ ethAddress: address, txHash: txHash ?? null, name, streetAddress, vatType, vatNumber, email, createdAt: new Date().toISOString() }),
-      { ex: TTL_SECONDS }
-    );
+    await redis.set(key, JSON.stringify(receipt), { ex: TTL_SECONDS });
+
+    if (vatType === 'pl') {
+      // KSeF e-invoice — no-ops unless KSEF_ENABLED=true
+      issueInvoice(receipt).catch((err) => console.error('KSeF issue failed:', err));
+    } else {
+      // PDF invoice via Resend for non-Polish companies
+      sendPdfInvoice(receipt).catch((err) => console.error('PDF invoice failed:', err));
+    }
 
     return NextResponse.json({ ok: true });
   } catch (err) {

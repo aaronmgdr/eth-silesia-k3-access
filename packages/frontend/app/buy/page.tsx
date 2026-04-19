@@ -7,16 +7,20 @@ import { DayPassPurchase } from '@/components/DayPassPurchase';
 import { ConnectButton } from '@/components/ConnectButton';
 
 export default function BuyPage() {
-  const { address, isConnected } = useAppKitAccount();
+  const { address, isConnected, status } = useAppKitAccount();
   const router = useRouter();
-  const {open} = useAppKit(); // Initialize AppKit to get access to the open function
+  const { open, close } = useAppKit();
   const {disconnect} = useDisconnect();
-  // Redirect to home if not connected
+
   useEffect(() => {
-    if (!isConnected || !address) {
-      open()
+    if (status === 'reconnecting' || status === 'connecting') return;
+    if (isConnected && address) {
+      close();
+    } else {
+      open();
     }
-  }, [isConnected, address, router, open]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConnected, address, status]);
 
   if (!address) {
     return null;

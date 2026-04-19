@@ -1,103 +1,120 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { parseSiweMessage, verifySiweMessage } from 'viem/siwe';
+import { publicClient } from '@/lib/contract';
 import { codeService, CodeRecord } from '@/lib/code-service';
 
+function getAdminAddresses(): string[] {
+  return (process.env.ADMIN_CODE_SETTERS || '')
+    .split(':')
+    .map((a) => a.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function isAdmin(address: string): boolean {
+  return getAdminAddresses().includes(address.toLowerCase());
+}
+
+function parseCodes(raw: string): CodeRecord[] {
+  const lines = raw.trim().split('\n');
+  const codes: CodeRecord[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    // Skip markdown separator rows like |---|---|
+    if (/^\|[-\s|:]+\|$/.test(trimmed)) continue;
+
+    let codeStr: string;
+    let expiresStr: string;
+
+    if (trimmed.startsWith('|')) {
+      // Markdown table row
+      const cells = trimmed.split('|').map((c) => c.trim()).filter(Boolean);
+      if (cells.length < 2) continue;
+      [codeStr, expiresStr] = cells;
+    } else if (trimmed.includes(',')) {
+      [codeStr, expiresStr] = trimmed.split(',').map((s) => s.trim());
+    } else if (trimmed.includes('|')) {
+      [codeStr, expiresStr] = trimmed.split('|').map((s) => s.trim());
+    } else {
+      continue;
+    }
+
+    if (!codeStr || !expiresStr) continue;
+    // Skip header rows (no digits in code column)
+    if (!/\d/.test(codeStr)) continue;
+
+    const expiresDate = new Date(expiresStr);
+    if (isNaN(expiresDate.getTime())) continue;
+
+    codes.push({ code: codeStr.trim().padStart(6, '0'), expires: expiresDate.toISOString() });
+  }
+
+  return codes;
+}
+
 export async function POST(req: NextRequest) {
+  const authHeader = req.headers.get('authorization') ?? '';
+  const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
   const adminKey = process.env.CODE_ADMIN_KEY;
 
-  if (!adminKey) {
-    return NextResponse.json(
-      { error: 'CODE_ADMIN_KEY not configured' },
-      { status: 500 }
-    );
+  let authed = false;
+
+  // Path A: Bearer token
+  if (bearerToken && adminKey && bearerToken === adminKey) {
+    authed = true;
   }
 
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return NextResponse.json(
-      { error: 'Missing or invalid authorization header' },
-      { status: 401 }
-    );
+  // Path B: SIWE — extract address from message, check ADMIN_CODE_SETTERS, verify sig
+  const body = await req.json().catch(() => null);
+  if (!authed) {
+    if (!body?.message || !body?.signature) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Address comes from the SIWE message, not trusted client input
+    const parsed = parseSiweMessage(body.message);
+    if (!parsed.address) {
+      return NextResponse.json({ error: 'Invalid SIWE message' }, { status: 401 });
+    }
+
+    if (!isAdmin(parsed.address)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const valid = await verifySiweMessage(publicClient, {
+      message: body.message,
+      signature: body.signature,
+    });
+
+    if (!valid) {
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+    }
+
+    authed = true;
   }
 
-  const providedKey = authHeader.slice(7);
-  if (providedKey !== adminKey) {
-    return NextResponse.json(
-      { error: 'Invalid CODE_ADMIN_KEY' },
-      { status: 403 }
-    );
+  if (!authed) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const rawText: string = body?.rawText ?? '';
+  if (!rawText.trim()) {
+    return NextResponse.json({ error: 'No codes provided' }, { status: 400 });
   }
 
   try {
-    const formData = await req.formData();
-    const file = formData.get('file') as File;
-
-    if (!file) {
-      return NextResponse.json(
-        { error: 'No file provided' },
-        { status: 400 }
-      );
-    }
-
-    const csv = await file.text();
-    const lines = csv.trim().split('\n');
-
-    if (lines.length === 0) {
-      return NextResponse.json(
-        { error: 'Empty CSV file' },
-        { status: 400 }
-      );
-    }
-
-    const codes: CodeRecord[] = [];
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line) continue;
-
-      const [codeStr, expiresStr] = line.split('|').map((s) => s.trim());
-
-      if (!codeStr || !expiresStr) {
-        return NextResponse.json(
-          { error: `Invalid CSV format at line ${i + 1}. Expected: CODE|EXPIRES` },
-          { status: 400 }
-        );
-      }
-
-      const code = codeStr.padStart(6, '0');
-      const expiresDate = new Date(expiresStr);
-
-      if (isNaN(expiresDate.getTime())) {
-        return NextResponse.json(
-          { error: `Invalid date format at line ${i + 1}: ${expiresStr}` },
-          { status: 400 }
-        );
-      }
-
-      codes.push({
-        code,
-        expires: expiresDate.toISOString(),
-      });
-    }
+    const codes = parseCodes(rawText);
 
     if (codes.length === 0) {
-      return NextResponse.json(
-        { error: 'No valid codes found in CSV' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'No valid codes found. Expected format: code,expires or markdown table.' }, { status: 400 });
     }
 
     await codeService.setCodes(codes);
 
-    return NextResponse.json({
-      success: true,
-      codesLoaded: codes.length,
-      message: `Successfully loaded ${codes.length} codes`,
-    });
+    return NextResponse.json({ success: true, codesLoaded: codes.length });
   } catch (err) {
-    console.error('Error processing codes CSV:', err);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    console.error('Error processing codes:', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
