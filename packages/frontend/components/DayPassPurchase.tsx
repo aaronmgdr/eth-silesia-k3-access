@@ -6,6 +6,7 @@ import { useWriteContract, useChainId } from 'wagmi';
 import { useAppKitAccount } from '@reown/appkit/react';
 import { useAuth } from '@/context/AuthContext';
 import { CONTRACT_ADDRESS, NFT_ABI, ERC20_ABI, checkMembership, publicClient, USDC_ADDRESS } from '@/lib/contract';
+import { site } from '@/lib/site';
 
 const USDC_PRICE = 20_000_000n; // 20 USDC (6 decimals)
 
@@ -185,7 +186,7 @@ export function DayPassPurchase() {
           </p>
           <div style={{ borderRadius: '12px', padding: '16px', marginBottom: '16px', border: '2px solid #dfdfdf' }}>
             <code className="text-2xl font-bold tracking-widest font-ui-monospace" style={{ color: textColor, letterSpacing: '0.8ch' }}>
-              {code || 12345}
+              {code || (site.demoMode ? '123456' : '—')}
             </code>
           </div>
           <p className="text-12" style={{ fontFamily: 'Satoshi, system-ui, sans-serif', fontSize: '16px', fontWeight: 400, lineHeight: '26px', color: 'rgba(255, 255, 255, 0.8)'}}>

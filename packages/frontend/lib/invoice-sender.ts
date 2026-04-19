@@ -29,7 +29,7 @@ export async function sendPdfInvoice(receipt: ReceiptData): Promise<void> {
   }
 
   const invoice = await buildInvoice(receipt);
-  const buffer = await renderToBuffer(React.createElement(InvoiceDocument, { invoice }));
+  const buffer = await renderToBuffer(React.createElement(InvoiceDocument, { invoice }) as any);
 
   await resend.emails.send({
     from: `${site.legalName} <invoices@ethwarsaw.dev>`,
