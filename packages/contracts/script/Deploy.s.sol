@@ -7,12 +7,13 @@ import {Kolektyw3AccessNFT} from "../src/Kolektyw3AccessNFT.sol";
 
 contract Deploy is Script {
     function run() external {
-        // Defaults: Anvil test addresses; override via env for real networks
-        address usdc     = vm.envOr("USDC_ADDRESS",     address(0x833589FCd6edb6E08F4c7C32d4f71B1566469C18));
-        address treasury = vm.envOr("TREASURY_ADDRESS", address(0x70997970C51812e339D9B73b0245Ad59E1FF86f0));
-        address owner    = vm.envOr("OWNER_ADDRESS",    address(0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266));
+        // All addresses must be explicitly set via environment variables
+        // This prevents accidental deployments with wrong addresses
+        address usdc     = vm.envAddress("USDC_ADDRESS");
+        address treasury = vm.envAddress("TREASURY_ADDRESS");
+        address owner    = vm.envAddress("OWNER_ADDRESS");
 
-        console2.log("Network addresses:");
+        console2.log("Deploying to network with addresses:");
         console2.log("  USDC:     ", usdc);
         console2.log("  Treasury: ", treasury);
         console2.log("  Owner:    ", owner);
