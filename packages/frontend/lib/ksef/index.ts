@@ -2,8 +2,6 @@ import { buildInvoice } from './builder';
 import { submitInvoice } from './client';
 import type { ReceiptData, KSeFSubmitResult } from './types';
 
-export type { ReceiptData, KSeFInvoice, KSeFSubmitResult } from './types';
-
 const enabled = process.env.KSEF_ENABLED === 'true';
 
 /**

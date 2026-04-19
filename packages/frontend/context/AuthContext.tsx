@@ -8,7 +8,7 @@ import { createSiweMessage } from 'viem/siwe';
 import { publicClient, CONTRACT_ADDRESS, NFT_ABI } from '@/lib/contract';
 import { activeChainId } from '@/lib/chain';
 
-export interface SiweSession {
+interface SiweSession {
   message: string;
   signature: string;
 }
