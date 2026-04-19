@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Providers } from './providers';
+import { Footer } from '@/components/Footer';
 
 export const metadata: Metadata = {
-  title: 'Kolektyw3 Access - Membership',
-  description: 'Buy a day pass with USDC or card. Get instant access to kolektyw3 coworking.',
+  title: 'Kolektyw3 — Community Space Access',
+  description: 'Buy a day pass with USDC or card. Get instant access to Kolektyw3, a community space in the heart of Warsaw.',
 };
 
 export default function RootLayout({
@@ -14,8 +15,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>
-        <Providers>{children}</Providers>
+      <body style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+        <Providers>
+          <div style={{ flex: 1 }}>{children}</div>
+        </Providers>
+        <Footer />
       </body>
     </html>
   );

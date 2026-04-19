@@ -30,5 +30,18 @@ class ResendEmailService implements EmailServiceInterface {
   }
 }
 
-// Export singleton instance
-export const emailService: EmailServiceInterface = new ResendEmailService();
+// Lazy-load singleton instance to avoid requiring env vars at build time
+let emailServiceInstance: EmailServiceInterface | null = null;
+
+function getEmailService(): EmailServiceInterface {
+  if (!emailServiceInstance) {
+    emailServiceInstance = new ResendEmailService();
+  }
+  return emailServiceInstance;
+}
+
+export const emailService: EmailServiceInterface = {
+  async sendAccessCode(email: string, code: string): Promise<void> {
+    return getEmailService().sendAccessCode(email, code);
+  },
+};

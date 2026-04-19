@@ -3,10 +3,25 @@ import Stripe from 'stripe';
 import { codeService } from '@/lib/code-service';
 import { emailService } from '@/lib/email-service';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
+function getStripe(): Stripe {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) {
+    throw new Error('STRIPE_SECRET_KEY environment variable is required');
+  }
+  return new Stripe(key);
+}
+
+function getWebhookSecret(): string {
+  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!secret) {
+    throw new Error('STRIPE_WEBHOOK_SECRET environment variable is required');
+  }
+  return secret;
+}
 
 export async function POST(req: NextRequest) {
+  const stripe = getStripe();
+  const webhookSecret = getWebhookSecret();
   const body = await req.text();
   const signature = req.headers.get('stripe-signature');
 
