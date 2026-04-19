@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { getInvoiceData, saveInvoiceData, clearInvoiceData } from '@/lib/invoice-storage';
 
 interface ReceiptFormProps {
   address: string;
@@ -16,6 +17,27 @@ export function ReceiptForm({ address, onClose }: ReceiptFormProps) {
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [autoSaved, setAutoSaved] = useState(false);
+
+  // Load existing invoice data from localStorage on mount
+  useEffect(() => {
+    const stored = getInvoiceData(address);
+    if (stored) {
+      setName(stored.name);
+      setStreetAddress(stored.streetAddress);
+      setVatType(stored.vatType);
+      setVatNumber(stored.vatNumber);
+      setEmail(stored.email);
+      setAutoSaved(true);
+    }
+  }, [address]);
+
+  // Auto-save to localStorage as user types
+  useEffect(() => {
+    if (name || streetAddress || vatNumber || email) {
+      saveInvoiceData(address, { name, streetAddress, vatType, vatNumber, email });
+    }
+  }, [address, name, streetAddress, vatType, vatNumber, email]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,6 +45,13 @@ export function ReceiptForm({ address, onClose }: ReceiptFormProps) {
     setError(null);
     try {
       const txHash = localStorage.getItem(`kolektyw3:mintTx:${address.toLowerCase()}`) ?? undefined;
+      if (!txHash) {
+        // No txHash yet, just save to localStorage and show message
+        saveInvoiceData(address, { name, streetAddress, vatType, vatNumber, email });
+        setSaved(true);
+        return;
+      }
+      // txHash exists, submit to backend
       const res = await fetch('/api/receipt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -32,6 +61,7 @@ export function ReceiptForm({ address, onClose }: ReceiptFormProps) {
         const data = await res.json();
         throw new Error(data.error || 'Failed to save');
       }
+      clearInvoiceData(address);
       setSaved(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save');
@@ -62,13 +92,16 @@ export function ReceiptForm({ address, onClose }: ReceiptFormProps) {
   };
 
   if (saved) {
+    const txHash = localStorage.getItem(`kolektyw3:mintTx:${address.toLowerCase()}`);
     return (
       <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '32px', textAlign: 'center' }}>
         <p style={{ fontSize: '16px', fontWeight: 600, color: '#1f2937', fontFamily: 'Satoshi, system-ui, sans-serif' }}>
-          Details saved.
+          {txHash ? 'Invoice submitted.' : 'Details saved.'}
         </p>
         <p style={{ fontSize: '14px', color: '#6b7280', marginTop: '8px', fontFamily: 'Satoshi, system-ui, sans-serif' }}>
-          We'll send your invoice to {email}.
+          {txHash
+            ? `We'll send your invoice to ${email}.`
+            : `Your details are saved. After you complete your purchase, we'll automatically submit your invoice.`}
         </p>
         <button
           onClick={onClose}

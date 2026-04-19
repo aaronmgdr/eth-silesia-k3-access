@@ -7,6 +7,7 @@ import { useAppKitAccount } from '@reown/appkit/react';
 import { useAuth } from '@/context/AuthContext';
 import { CONTRACT_ADDRESS, NFT_ABI, ERC20_ABI, checkMembership, publicClient, USDC_ADDRESS } from '@/lib/contract';
 import { site } from '@/lib/site';
+import { getInvoiceData, clearInvoiceData } from '@/lib/invoice-storage';
 
 const USDC_PRICE = 20_000_000n; // 20 USDC (6 decimals)
 
@@ -71,6 +72,33 @@ export function DayPassPurchase() {
     setCode(data.code);
     if (lsKey) {
       try { localStorage.setItem(lsKey, data.code); } catch {}
+    }
+  }
+
+  async function autoSubmitInvoiceIfSaved(mintTxHash: string) {
+    if (!address) return;
+    const invoiceData = getInvoiceData(address);
+    if (!invoiceData) return;
+
+    try {
+      const res = await fetch('/api/receipt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          address,
+          name: invoiceData.name,
+          streetAddress: invoiceData.streetAddress,
+          vatType: invoiceData.vatType,
+          vatNumber: invoiceData.vatNumber,
+          email: invoiceData.email,
+          txHash: mintTxHash,
+        }),
+      });
+      if (res.ok) {
+        clearInvoiceData(address);
+      }
+    } catch (err) {
+      console.error('Failed to auto-submit invoice:', err);
     }
   }
 
@@ -157,8 +185,10 @@ export function DayPassPurchase() {
       console.log('Mint confirmed');
       try { localStorage.setItem(`kolektyw3:mintTx:${address.toLowerCase()}`, mintTx); } catch {}
 
+      // Step 4: Auto-submit invoice if user saved one
+      await autoSubmitInvoiceIfSaved(mintTx);
 
-      // Step 4: Verify membership and get code
+      // Step 5: Verify membership and get code
       setStep('verifying');
       await getCode();
       setStep('done');
