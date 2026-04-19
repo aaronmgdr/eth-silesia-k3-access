@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseSiweMessage, verifySiweMessage } from 'viem/siwe';
 import { publicClient } from '@/lib/contract';
-import { codeService, CodeRecord } from '@/lib/code-service';
+import { codeService, CodeRecord, CODE_TYPES, CodeType } from '@/lib/code-service';
 
 function getAdminAddresses(): string[] {
   return (process.env.ADMIN_CODE_SETTERS || '')
@@ -27,18 +27,27 @@ function parseCodes(raw: string): CodeRecord[] {
     let codeStr: string;
     let expiresStr: string;
 
+    let typeStr: CodeType = 'DAY';
+
     if (trimmed.startsWith('|')) {
       // Markdown table row
       const cells = trimmed.split('|').map((c) => c.trim()).filter(Boolean);
       if (cells.length < 2) continue;
       [codeStr, expiresStr] = cells;
+      if (cells[2]) typeStr = cells[2].toUpperCase() as CodeType;
     } else if (trimmed.includes(',')) {
-      [codeStr, expiresStr] = trimmed.split(',').map((s) => s.trim());
+      const parts = trimmed.split(',').map((s) => s.trim());
+      [codeStr, expiresStr] = parts;
+      if (parts[2]) typeStr = parts[2].toUpperCase() as CodeType;
     } else if (trimmed.includes('|')) {
-      [codeStr, expiresStr] = trimmed.split('|').map((s) => s.trim());
+      const parts = trimmed.split('|').map((s) => s.trim());
+      [codeStr, expiresStr] = parts;
+      if (parts[2]) typeStr = parts[2].toUpperCase() as CodeType;
     } else {
       continue;
     }
+
+    if (typeStr !== 'DAY' && !CODE_TYPES.includes(typeStr)) typeStr = 'DAY';
 
     if (!codeStr || !expiresStr) continue;
     // Skip header rows (no digits in code column)
@@ -47,7 +56,7 @@ function parseCodes(raw: string): CodeRecord[] {
     const expiresDate = new Date(expiresStr);
     if (isNaN(expiresDate.getTime())) continue;
 
-    codes.push({ code: codeStr.trim().padStart(6, '0'), expires: expiresDate.toISOString() });
+    codes.push({ code: codeStr.trim().padStart(6, '0'), expires: expiresDate.toISOString(), type: typeStr });
   }
 
   return codes;

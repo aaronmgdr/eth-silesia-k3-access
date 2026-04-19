@@ -12,9 +12,13 @@ import { Redis } from '@upstash/redis';
  * - Wallet address (0x... format from blockchain flow)
  */
 
+export const CODE_TYPES = ['DAY', 'VIBER', 'HACKER'] as const;
+export type CodeType = typeof CODE_TYPES[number];
+
 export interface CodeRecord {
   code: string;
-  expires: string; // ISO date
+  expires: string; // ISO date — YYYY-MM-DD or YYYY-MM-DD HH:MM
+  type: CodeType;
 }
 
 interface CodeServiceInterface {
@@ -86,13 +90,24 @@ class RedisCodeService implements CodeServiceInterface {
   }
 
   async setCodes(codes: CodeRecord[]): Promise<void> {
-    // Clear both queue and claims
-    await this.redis.del(this.queueKey);
-    await this.redis.del(this.claimsKey);
+    const codeRe   = /^\d{4,8}$/;
+    const expireRe = /^\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2})?/;
+    const invalid = codes.filter(
+      (c) => !codeRe.test(c.code) || !expireRe.test(c.expires) || !CODE_TYPES.includes(c.type as CodeType)
+    );
+    if (invalid.length > 0) {
+      throw new Error(
+        `Invalid codes rejected (${invalid.length}): ` +
+        invalid.slice(0, 3).map((c) => `"${c.code}" / "${c.expires}"`).join(', ') +
+        (invalid.length > 3 ? ` … +${invalid.length - 3} more` : '')
+      );
+    }
 
-    // Add new codes to queue as JSON strings
+    // Clear queue; keep claims so people can still view their current code
+    await this.redis.del(this.queueKey);
+
     if (codes.length > 0) {
-      const serialized = codes.map((c) => JSON.stringify(c));
+      const serialized = codes.map((c) => JSON.stringify({ code: c.code, expires: c.expires }));
       await this.redis.rpush(this.queueKey, ...serialized);
     }
   }

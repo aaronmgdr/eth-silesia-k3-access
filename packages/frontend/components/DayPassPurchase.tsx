@@ -186,7 +186,7 @@ export function DayPassPurchase() {
           </p>
           <div style={{ borderRadius: '12px', padding: '16px', marginBottom: '16px', border: '2px solid #dfdfdf' }}>
             <code className="text-2xl font-bold tracking-widest font-ui-monospace" style={{ color: textColor, letterSpacing: '0.8ch' }}>
-              {code || (site.demoMode ? '123456' : '—')}
+              {code === 'undefined' && site.demoMode ?  '123456' :  (code  || (site.demoMode ? '123456' : '—'))}
             </code>
           </div>
           <p className="text-12" style={{ fontFamily: 'Satoshi, system-ui, sans-serif', fontSize: '16px', fontWeight: 400, lineHeight: '26px', color: 'rgba(255, 255, 255, 0.8)'}}>

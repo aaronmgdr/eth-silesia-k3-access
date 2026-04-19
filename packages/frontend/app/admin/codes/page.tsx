@@ -156,7 +156,7 @@ export default function AdminCodesPage() {
               Upload Access Codes
             </h2>
             <p style={{ fontFamily: 'Satoshi, system-ui, sans-serif', fontSize: '14px', color: '#6b7280', marginBottom: '24px' }}>
-              Paste a CSV or markdown table. Replaces all existing codes.
+              Paste a CSV or markdown table with columns: <strong>code, expires, type</strong>. Replaces all queued codes.
             </p>
 
             <div style={{ marginBottom: '20px' }}>
@@ -178,9 +178,13 @@ export default function AdminCodesPage() {
                   outline: 'none',
                   boxSizing: 'border-box',
                 }}
-                placeholder={`CSV:\n123456,2025-12-31\n789012,2025-12-31\n\nMarkdown:\n| code | expires |\n|------|------|\n| 123456 | 2025-12-31 |`}
+                placeholder={`CSV (type optional, defaults to DAY):\n123456,2026-06-01,DAY\n789012,2026-06-01,VIBER\n\nMarkdown:\n| code   | expires    | type   |\n|--------|------------|--------|\n| 123456 | 2026-06-01 | HACKER |`}
               />
-              <p style={hint}>Accepts comma-separated, pipe-separated, or markdown table. First column: code. Second column: expiry date.</p>
+              <p style={hint}>
+                <strong>code</strong> — 4–8 digits (e.g. <code>1234</code>, <code>56789012</code>){' · '}
+                <strong>expires</strong> — <code>YYYY-MM-DD</code> or <code>YYYY-MM-DD HH:MM</code>{' · '}
+                <strong>type</strong> — <code>DAY</code>, <code>VIBER</code>, or <code>HACKER</code>; case-insensitive, defaults to <code>DAY</code>
+              </p>
             </div>
 
             {pageState === 'error' && message && (
