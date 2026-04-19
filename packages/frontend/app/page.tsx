@@ -1,45 +1,19 @@
 'use client';
 
-import { useDisconnect } from 'wagmi';
-import { useAppKit, useAppKitAccount } from '@reown/appkit/react';
+import { useAppKitAccount } from '@reown/appkit/react';
 import { useRouter } from 'next/navigation';
-import { ConnectButton } from '@/components/ConnectButton';
+import { PageHeader } from '@/components/PageHeader';
 import { useAuth } from '@/context/AuthContext';
 
 export default function Home() {
-  const { address, isConnected } = useAppKitAccount();
-  const { disconnect } = useDisconnect();
+  const { isConnected } = useAppKitAccount();
   const { hasValidMembership } = useAuth();
 
   const router = useRouter();
 
-  const handleAccessClick = () => {
-    router.push('/access');
-  };
-
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#2D3266' }}>
-      {/* Header with Sign In Button */}
-      <header className="px-6 py-8">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <h1 className="text-24 font-satoshi font-bold" style={{ color: '#FFFFFF' }}>
-            Kolektyw3
-          </h1>
-          {address ? (
-            <button
-              onClick={() => disconnect()}
-              style={{
-                fontSize: '14px',
-                padding: '12px 24px',
-              }}
-            >
-              {address.slice(0, 6)}...{address.slice(-4)}
-            </button>
-          ) : (
-            <ConnectButton />
-          )}
-        </div>
-      </header>
+      <PageHeader />
 
       {/* Main CTA */}
       <main className="flex items-center justify-center min-h-[calc(100vh-120px)] px-8pac">
@@ -53,7 +27,7 @@ export default function Home() {
             </h3>
           </div>
           <button
-            onClick={handleAccessClick}
+            onClick={() => router.push('/access')}
             style={{
               fontSize: '28px',
               padding: '24px 60px',

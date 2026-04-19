@@ -1,17 +1,14 @@
 'use client';
 
-import { useAppKit, useAppKitAccount, useDisconnect } from '@reown/appkit/react';
-import { useRouter } from 'next/navigation';
+import { useAppKit, useAppKitAccount } from '@reown/appkit/react';
 import { useEffect, useState } from 'react';
 import { DayPassPurchase } from '@/components/DayPassPurchase';
-import { ConnectButton } from '@/components/ConnectButton';
+import { PageHeader } from '@/components/PageHeader';
 import { ReceiptForm } from '@/components/ReceiptForm';
 
 export default function AccessPage() {
   const { address, isConnected, status } = useAppKitAccount();
-  const router = useRouter();
   const { open, close } = useAppKit();
-  const {disconnect} = useDisconnect();
   const [showReceipt, setShowReceipt] = useState(false);
   const [mintTxHash, setMintTxHash] = useState<string | undefined>();
 
@@ -30,32 +27,8 @@ export default function AccessPage() {
   }
 
   return (
-    <div style={{ backgroundColor: '#2D3266', padding: '20px 20px' }}>
-      {/* Header */}
-      <header className="px-6 py-8 mb-8 flex items-center justify-between">
-        <div className="">
-          <button
-            onClick={() => router.push('/')}
-            className="text-18"
-            style={{ color: '#FFFFFF', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-          >
-            ← Back
-          </button>
-        </div>
-        {address ? (
-                    <button
-                      onClick={() => disconnect()}
-                      style={{
-                        fontSize: '14px',
-                        padding: '12px 24px',
-                      }}
-                    >
-                      {address.slice(0, 6)}...{address.slice(-4)}
-                    </button>
-                  ) : (
-                    <ConnectButton />
-                  )}
-      </header>
+    <div style={{ backgroundColor: '#2D3266', minHeight: '100vh' }}>
+      <PageHeader backHref="/" />
 
       {/* Main Content */}
       <main className="flex flex-col items-center justify-center gap-4">

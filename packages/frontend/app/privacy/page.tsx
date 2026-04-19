@@ -1,4 +1,5 @@
 import { site } from '@/lib/site';
+import { PageHeader } from '@/components/PageHeader';
 
 export const metadata = {
   title: 'Privacy Policy — Kolektyw3',
@@ -6,7 +7,9 @@ export const metadata = {
 
 export default function PrivacyPage() {
   return (
-    <div style={{ backgroundColor: '#2D3266', minHeight: '100vh', padding: '48px 20px' }}>
+    <div style={{ backgroundColor: '#2D3266', minHeight: '100vh' }}>
+      <PageHeader backHref="/" />
+      <div style={{ padding: '24px 20px' }}>
       <div style={{ maxWidth: '680px', margin: '0 auto', backgroundColor: '#ffffff', borderRadius: '16px', padding: '40px 48px', fontFamily: 'Satoshi, system-ui, sans-serif', color: '#1f2937' }}>
         <h1 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '8px' }}>Privacy Policy</h1>
         <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: site.demoMode ? '16px' : '32px' }}>Last updated: April 2026</p>
@@ -93,6 +96,7 @@ export default function PrivacyPage() {
             analytics or advertising scripts.
           </p>
         </Section>
+      </div>
       </div>
     </div>
   );
