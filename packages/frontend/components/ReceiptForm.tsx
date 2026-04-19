@@ -99,17 +99,16 @@ export function ReceiptForm({ address, mintTxHash, onClose }: ReceiptFormProps) 
     fontFamily: 'Satoshi, system-ui, sans-serif',
   };
 
-  if (saved) {
-    const txHash = localStorage.getItem(`kolektyw3:mintTx:${address.toLowerCase()}`);
+  if (submitState !== 'idle') {
     return (
       <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '32px', textAlign: 'center' }}>
         <p style={{ fontSize: '16px', fontWeight: 600, color: '#1f2937', fontFamily: 'Satoshi, system-ui, sans-serif' }}>
-          {txHash ? 'Invoice submitted.' : 'Details saved.'}
+          {submitState === 'submitted' ? 'Invoice submitted.' : 'Details saved.'}
         </p>
         <p style={{ fontSize: '14px', color: '#6b7280', marginTop: '8px', fontFamily: 'Satoshi, system-ui, sans-serif' }}>
-          {txHash
+          {submitState === 'submitted'
             ? `We'll send your invoice to ${email}.`
-            : `Your details are saved. After you complete your purchase, we'll automatically submit your invoice.`}
+            : `Your invoice will be automatically submitted once your payment is confirmed.`}
         </p>
         <button
           onClick={onClose}
@@ -197,7 +196,7 @@ export function ReceiptForm({ address, mintTxHash, onClose }: ReceiptFormProps) 
           disabled={loading}
           style={{ flex: 1, padding: '11px 0', fontSize: '14px' }}
         >
-          {loading ? 'Saving...' : 'Save Details'}
+          {loading ? 'Submitting…' : mintTxHash ? 'Submit Invoice' : 'Save Details'}
         </button>
         <button
           type="button"
