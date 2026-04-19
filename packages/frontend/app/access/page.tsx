@@ -13,6 +13,7 @@ export default function AccessPage() {
   const { open, close } = useAppKit();
   const {disconnect} = useDisconnect();
   const [showReceipt, setShowReceipt] = useState(false);
+  const [mintTxHash, setMintTxHash] = useState<string | undefined>();
 
   useEffect(() => {
     if (status === 'reconnecting' || status === 'connecting') return;
@@ -58,10 +59,10 @@ export default function AccessPage() {
 
       {/* Main Content */}
       <main className="flex flex-col items-center justify-center gap-4">
-        <DayPassPurchase />
+        <DayPassPurchase onMintComplete={setMintTxHash} />
         <div className="w-full max-w-md">
           {showReceipt ? (
-            <ReceiptForm address={address} onClose={() => setShowReceipt(false)} />
+            <ReceiptForm address={address} mintTxHash={mintTxHash} onClose={() => setShowReceipt(false)} />
           ) : (
             <button
               onClick={() => setShowReceipt(true)}

@@ -11,7 +11,11 @@ import { getInvoiceData, clearInvoiceData } from '@/lib/invoice-storage';
 
 const USDC_PRICE = 20_000_000n; // 20 USDC (6 decimals)
 
-export function DayPassPurchase() {
+interface DayPassPurchaseProps {
+  onMintComplete?: (txHash: string) => void;
+}
+
+export function DayPassPurchase({ onMintComplete }: DayPassPurchaseProps = {}) {
   const { address } = useAppKitAccount();
   const { code, setCode, siweSession, hasValidMembership, checkValidMembership } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -187,6 +191,7 @@ export function DayPassPurchase() {
 
       // Step 4: Auto-submit invoice if user saved one
       await autoSubmitInvoiceIfSaved(mintTx);
+      onMintComplete?.(mintTx);
 
       // Step 5: Verify membership and get code
       setStep('verifying');

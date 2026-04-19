@@ -5,17 +5,20 @@ import { getInvoiceData, saveInvoiceData, clearInvoiceData } from '@/lib/invoice
 
 interface ReceiptFormProps {
   address: string;
+  mintTxHash?: string;
   onClose: () => void;
 }
 
-export function ReceiptForm({ address, onClose }: ReceiptFormProps) {
+type SubmitState = 'idle' | 'saved-locally' | 'submitted';
+
+export function ReceiptForm({ address, mintTxHash, onClose }: ReceiptFormProps) {
   const [name, setName] = useState('');
   const [streetAddress, setStreetAddress] = useState('');
   const [vatType, setVatType] = useState<'pl' | 'other'>('pl');
   const [vatNumber, setVatNumber] = useState('');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [submitState, setSubmitState] = useState<SubmitState>('idle');
   const [error, setError] = useState<string | null>(null);
   const [autoSaved, setAutoSaved] = useState(false);
 
@@ -39,6 +42,13 @@ export function ReceiptForm({ address, onClose }: ReceiptFormProps) {
     }
   }, [address, name, streetAddress, vatType, vatNumber, email]);
 
+  // When tx completes after a pre-tx local save, the auto-submit already ran — update feedback
+  useEffect(() => {
+    if (mintTxHash && submitState === 'saved-locally') {
+      setSubmitState('submitted');
+    }
+  }, [mintTxHash, submitState]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -46,12 +56,10 @@ export function ReceiptForm({ address, onClose }: ReceiptFormProps) {
     try {
       const txHash = localStorage.getItem(`kolektyw3:mintTx:${address.toLowerCase()}`) ?? undefined;
       if (!txHash) {
-        // No txHash yet, just save to localStorage and show message
         saveInvoiceData(address, { name, streetAddress, vatType, vatNumber, email });
-        setSaved(true);
+        setSubmitState('saved-locally');
         return;
       }
-      // txHash exists, submit to backend
       const res = await fetch('/api/receipt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -62,7 +70,7 @@ export function ReceiptForm({ address, onClose }: ReceiptFormProps) {
         throw new Error(data.error || 'Failed to save');
       }
       clearInvoiceData(address);
-      setSaved(true);
+      setSubmitState('submitted');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save');
     } finally {
