@@ -1,47 +1,47 @@
-/**
- * Email Service - Abstracts email sending
- *
- * This service handles sending emails.
- * Implementation can be swapped when needed.
- */
-
 import { resend } from './resend';
+import { site } from './site';
 
 interface EmailServiceInterface {
-  /**
-   * Send access code email
-   * @param email - Recipient email address
-   * @param code - Access code to send
-   */
   sendAccessCode(email: string, code: string): Promise<void>;
 }
 
 class ResendEmailService implements EmailServiceInterface {
   async sendAccessCode(email: string, code: string): Promise<void> {
+    const from = process.env.RESEND_FROM_EMAIL || 'kolektyw3@resend.dev';
+
+    if (site.demoMode) {
+      await resend.emails.send({
+        from,
+        to: email,
+        subject: `[DEMO] Access Code ${code} — Kolektyw3`,
+        html: `
+          <p style="background:#fef3c7;border:1px solid #f59e0b;padding:10px;border-radius:6px;font-size:13px;color:#92400e;">
+            <strong>Demo build</strong> — this is a hackathon demonstration. This code may not grant real physical access.
+          </p>
+          <p>Your demo access code for Kolektyw3 community space in Warsaw is: <strong>${code}</strong></p>
+          <p>— The ETH Warsaw team</p>
+        `,
+      });
+      return;
+    }
+
     await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL || 'kolektyw3@resend.dev',
+      from,
       to: email,
-      subject: `Access Code ${code} Kolektyw3`,
+      subject: `Access Code ${code} — Kolektyw3`,
       html: `
-        <p>Your Access Code for Kolektyw3 Coworking in Warsaw is ${code}</p>
-        <p>The Team at Kolektyw3</p>
+        <p>Your access code for Kolektyw3 community space in Warsaw is: <strong>${code}</strong></p>
+        <p>— ${site.legalName}</p>
       `,
     });
   }
 }
 
-// Lazy-load singleton instance to avoid requiring env vars at build time
-let emailServiceInstance: EmailServiceInterface | null = null;
-
-function getEmailService(): EmailServiceInterface {
-  if (!emailServiceInstance) {
-    emailServiceInstance = new ResendEmailService();
-  }
-  return emailServiceInstance;
-}
+let instance: EmailServiceInterface | null = null;
 
 export const emailService: EmailServiceInterface = {
-  async sendAccessCode(email: string, code: string): Promise<void> {
-    return getEmailService().sendAccessCode(email, code);
+  async sendAccessCode(email, code) {
+    if (!instance) instance = new ResendEmailService();
+    return instance.sendAccessCode(email, code);
   },
 };
