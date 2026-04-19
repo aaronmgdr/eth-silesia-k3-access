@@ -30,7 +30,7 @@ export function PageHeader({ backHref }: PageHeaderProps) {
             ← Back
           </button>
         ) : (
-          <Image src="/logo.png" alt="Kolektyw3" width={120} height={40} style={{ objectFit: 'contain' }} />
+          <Image src="/logo.png" alt="Kolektyw3" width={120} height={40} style={{ objectFit: 'contain', filter: 'invert(1)' }} />
         )}
       </div>
 
