@@ -1,4 +1,4 @@
-import { Redis } from '@upstash/redis';
+import { makeRedis } from './redis';
 
 /**
  * Code Service - Abstracts access code management
@@ -53,14 +53,7 @@ class RedisCodeService implements CodeServiceInterface {
   private claimsKey = 'kolektyw3:claims';
 
   constructor() {
-    const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
-    if (!redisUrl) {
-      throw new Error('UPSTASH_REDIS_REST_URL environment variable is required');
-    }
-    this.redis = new Redis({
-      url: redisUrl,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
-    });
+    this.redis = makeRedis();
   }
 
   async dequeueCode(identifier: string): Promise<string | null> {

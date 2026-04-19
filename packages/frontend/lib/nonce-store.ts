@@ -1,9 +1,6 @@
-import { Redis } from '@upstash/redis';
+import { makeRedis } from './redis';
 
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
+const redis = makeRedis();
 
 const PREFIX = 'kolektyw3:nonce:';
 const TTL_SECONDS = 5 * 60;
