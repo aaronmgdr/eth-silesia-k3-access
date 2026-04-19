@@ -14,6 +14,33 @@ function isAdmin(address: string): boolean {
   return getAdminAddresses().includes(address.toLowerCase());
 }
 
+async function verifySiwe(message: string, signature: string): Promise<boolean> {
+  const parsed = parseSiweMessage(message);
+  if (!parsed.address) return false;
+  if (!isAdmin(parsed.address)) return false;
+  return verifySiweMessage(publicClient, { message, signature: signature as `0x${string}` });
+}
+
+async function authenticate(req: NextRequest): Promise<{ authed: boolean; status: number }> {
+  const authHeader = req.headers.get('authorization') ?? '';
+  const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  const adminKey = process.env.CODE_ADMIN_KEY;
+
+  if (bearerToken && adminKey && bearerToken === adminKey) {
+    return { authed: true, status: 200 };
+  }
+
+  const siweMessageB64 = req.headers.get('x-siwe-message');
+  const siweSignature = req.headers.get('x-siwe-signature');
+  if (siweMessageB64 && siweSignature) {
+    const siweMessage = Buffer.from(siweMessageB64, 'base64').toString('utf8');
+    const valid = await verifySiwe(siweMessage, siweSignature).catch(() => false);
+    return valid ? { authed: true, status: 200 } : { authed: false, status: 401 };
+  }
+
+  return { authed: false, status: 401 };
+}
+
 function parseCodes(raw: string): CodeRecord[] {
   const lines = raw.trim().split('\n');
   const codes: CodeRecord[] = [];
@@ -21,16 +48,13 @@ function parseCodes(raw: string): CodeRecord[] {
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
-    // Skip markdown separator rows like |---|---|
     if (/^\|[-\s|:]+\|$/.test(trimmed)) continue;
 
     let codeStr: string;
     let expiresStr: string;
-
     let typeStr: CodeType = 'DAY';
 
     if (trimmed.startsWith('|')) {
-      // Markdown table row
       const cells = trimmed.split('|').map((c) => c.trim()).filter(Boolean);
       if (cells.length < 2) continue;
       [codeStr, expiresStr] = cells;
@@ -47,10 +71,8 @@ function parseCodes(raw: string): CodeRecord[] {
       continue;
     }
 
-    if (typeStr !== 'DAY' && !CODE_TYPES.includes(typeStr)) typeStr = 'DAY';
-
+    if (!CODE_TYPES.includes(typeStr)) typeStr = 'DAY';
     if (!codeStr || !expiresStr) continue;
-    // Skip header rows (no digits in code column)
     if (!/\d/.test(codeStr)) continue;
 
     const expiresDate = new Date(expiresStr);
@@ -62,52 +84,21 @@ function parseCodes(raw: string): CodeRecord[] {
   return codes;
 }
 
+export async function GET(req: NextRequest) {
+  const { authed, status } = await authenticate(req);
+  if (!authed) return NextResponse.json({ error: 'Unauthorized' }, { status });
+
+  const codesStatus = await codeService.getStatus();
+  return NextResponse.json({ available: codesStatus.available, claims: codesStatus.claims });
+}
+
 export async function POST(req: NextRequest) {
-  const authHeader = req.headers.get('authorization') ?? '';
-  const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-  const adminKey = process.env.CODE_ADMIN_KEY;
+  const { authed, status } = await authenticate(req);
+  if (!authed) return NextResponse.json({ error: 'Unauthorized' }, { status });
 
-  let authed = false;
-
-  // Path A: Bearer token
-  if (bearerToken && adminKey && bearerToken === adminKey) {
-    authed = true;
-  }
-
-  // Path B: SIWE — extract address from message, check ADMIN_CODE_SETTERS, verify sig
   const body = await req.json().catch(() => null);
-  if (!authed) {
-    if (!body?.message || !body?.signature) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Address comes from the SIWE message, not trusted client input
-    const parsed = parseSiweMessage(body.message);
-    if (!parsed.address) {
-      return NextResponse.json({ error: 'Invalid SIWE message' }, { status: 401 });
-    }
-
-    if (!isAdmin(parsed.address)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    const valid = await verifySiweMessage(publicClient, {
-      message: body.message,
-      signature: body.signature,
-    });
-
-    if (!valid) {
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
-    }
-
-    authed = true;
-  }
-
-  if (!authed) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   const rawText: string = body?.rawText ?? '';
+
   if (!rawText.trim()) {
     return NextResponse.json({ error: 'No codes provided' }, { status: 400 });
   }
@@ -121,7 +112,8 @@ export async function POST(req: NextRequest) {
 
     await codeService.setCodes(codes);
 
-    return NextResponse.json({ success: true, codesLoaded: codes.length });
+    const codesStatus = await codeService.getStatus();
+    return NextResponse.json({ success: true, codesLoaded: codes.length, available: codesStatus.available, claims: codesStatus.claims });
   } catch (err) {
     console.error('Error processing codes:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

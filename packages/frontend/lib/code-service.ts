@@ -21,6 +21,11 @@ export interface CodeRecord {
   type: CodeType;
 }
 
+export interface CodeStatus {
+  available: CodeRecord[];
+  claims: Record<string, string>;
+}
+
 interface CodeServiceInterface {
   /**
    * Get a code for an identifier (idempotent).
@@ -42,6 +47,9 @@ interface CodeServiceInterface {
    * @param codes - Array of code records
    */
   setCodes(codes: CodeRecord[]): Promise<void>;
+
+  /** Return all queued (available) codes and all claim mappings. */
+  getStatus(): Promise<CodeStatus>;
 }
 
 /**
@@ -80,6 +88,27 @@ class RedisCodeService implements CodeServiceInterface {
     });
 
     return code;
+  }
+
+  async getStatus(): Promise<CodeStatus> {
+    const [rawQueue, rawClaims] = await Promise.all([
+      this.redis.lrange(this.queueKey, 0, -1),
+      this.redis.hgetall(this.claimsKey),
+    ]);
+
+    const available: CodeRecord[] = (rawQueue as string[]).map((item) => {
+      const parsed = typeof item === 'string' ? JSON.parse(item) : item;
+      return { code: parsed.code, expires: parsed.expires, type: (parsed.type ?? 'DAY') as CodeType };
+    });
+
+    const claims: Record<string, string> = {};
+    if (rawClaims) {
+      for (const [k, v] of Object.entries(rawClaims)) {
+        claims[k] = typeof v === 'string' ? v : (v as CodeRecord).code ?? String(v);
+      }
+    }
+
+    return { available, claims };
   }
 
   async setCodes(codes: CodeRecord[]): Promise<void> {
@@ -122,5 +151,8 @@ export const codeService: CodeServiceInterface = {
   },
   async setCodes(codes: CodeRecord[]): Promise<void> {
     return getCodeService().setCodes(codes);
+  },
+  async getStatus(): Promise<CodeStatus> {
+    return getCodeService().getStatus();
   },
 };
