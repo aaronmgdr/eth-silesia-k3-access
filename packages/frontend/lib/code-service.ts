@@ -49,12 +49,13 @@ class RedisCodeService implements CodeServiceInterface {
   private claimsKey = 'kolektyw3:claims';
 
   constructor() {
-    const redisUrl = process.env.REDIS_URL;
+    const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
     if (!redisUrl) {
-      throw new Error('REDIS_URL environment variable is required');
+      throw new Error('UPSTASH_REDIS_REST_URL environment variable is required');
     }
     this.redis = new Redis({
       url: redisUrl,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
     });
   }
 
@@ -62,6 +63,8 @@ class RedisCodeService implements CodeServiceInterface {
     // 1. Check if identifier already claimed a code (O(1))
     const existingCode = await this.redis.hget(this.claimsKey, identifier);
     if (existingCode) {
+      console.log(`Identifier ${identifier} already claimed code`,existingCode);
+      // @ts-expect-error - handle both string and object formats
       return typeof existingCode === 'string' ? existingCode : existingCode.code;
     }
 
@@ -95,5 +98,21 @@ class RedisCodeService implements CodeServiceInterface {
   }
 }
 
-// Export singleton instance
-export const codeService: CodeServiceInterface = new RedisCodeService();
+// Lazy-load singleton instance to avoid requiring env vars at build time
+let codeServiceInstance: CodeServiceInterface | null = null;
+
+function getCodeService(): CodeServiceInterface {
+  if (!codeServiceInstance) {
+    codeServiceInstance = new RedisCodeService();
+  }
+  return codeServiceInstance;
+}
+
+export const codeService: CodeServiceInterface = {
+  async dequeueCode(identifier: string): Promise<string | null> {
+    return getCodeService().dequeueCode(identifier);
+  },
+  async setCodes(codes: CodeRecord[]): Promise<void> {
+    return getCodeService().setCodes(codes);
+  },
+};
