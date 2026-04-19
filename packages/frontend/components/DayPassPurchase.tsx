@@ -213,23 +213,24 @@ export function DayPassPurchase({ onMintComplete }: DayPassPurchaseProps = {}) {
     const textColor = '#ffffff' 
 
 
-  if ((step === 'done' && code) || (hasValidMembership && code)) {
+  if ((hasValidMembership && !!siweSession) || (step === 'done' && !!code)) {
+    const displayCode = code || '******';
     return (
       <div className="w-full max-w-md">
-        <div  className='bg-gradient-to-r from-[#8891C255] to-[#6F7FD799] shadow-[0_0_30px_rgba(111,127,215,0.1)]' style={{ borderRadius: '12px', padding: '32px', textAlign: 'center' }}>
-          <h3 className="text-2xl font-bold text-white  mb-4 "style={{ color: '#ffffff' }}>
+        <div className='bg-gradient-to-r from-[#8891C255] to-[#6F7FD799] shadow-[0_0_30px_rgba(111,127,215,0.1)]' style={{ borderRadius: '12px', padding: '32px', textAlign: 'center' }}>
+          <h3 className="text-2xl font-bold text-white mb-4" style={{ color: '#ffffff' }}>
             Kolektyw3
           </h3>
-          <p className="text-20 font-sat mb-6 centered" style={{ fontFamily: 'Satoshi, system-ui, sans-serif', fontSize: '16px', fontWeight: 400, lineHeight: '26px', color: 'rgba(255, 255, 255, 0.8)'} }>
-            Your membership is active.<br/> Use this code at the entrance:
+          <p className="text-20 font-sat mb-6 centered" style={{ fontFamily: 'Satoshi, system-ui, sans-serif', fontSize: '16px', fontWeight: 400, lineHeight: '26px', color: 'rgba(255, 255, 255, 0.8)' }}>
+            Your membership is active.<br />Use this code at the entrance:
           </p>
           <div style={{ borderRadius: '12px', padding: '16px', marginBottom: '16px', border: '2px solid #dfdfdf' }}>
             <code className="text-2xl font-bold tracking-widest font-ui-monospace" style={{ color: textColor, letterSpacing: '0.8ch' }}>
-              {code || (site.demoMode ? '123456' : '—')}
+              {displayCode}
             </code>
           </div>
-          <p className="text-12" style={{ fontFamily: 'Satoshi, system-ui, sans-serif', fontSize: '16px', fontWeight: 400, lineHeight: '26px', color: 'rgba(255, 255, 255, 0.8)'}}>
-            Valid for 24 hours from purchase
+          <p className="text-12" style={{ fontFamily: 'Satoshi, system-ui, sans-serif', fontSize: '16px', fontWeight: 400, lineHeight: '26px', color: 'rgba(255, 255, 255, 0.8)' }}>
+            {code ? 'Valid for 24 hours from purchase' : 'Retrieving your code…'}
           </p>
         </div>
       </div>
