@@ -1,1 +1,1 @@
-Created for ETHSilesia Hackathon 2026
+Made during ETHSilesia 2026 hackathon
