@@ -10,6 +10,8 @@ export const site = {
   swift:   process.env.NEXT_PUBLIC_SWIFT         ?? 'BREXPLPWMBK',
   bank:    process.env.NEXT_PUBLIC_BANK          ?? 'mBank',
 
+  sourceUrl: process.env.NEXT_PUBLIC_SOURCE_URL ?? 'https://github.com/aaronmgdr/eth-silesia-k3-access',
+
   // Set NEXT_PUBLIC_DEMO_MODE=true to show a demo/hackathon disclaimer sitewide
   demoMode: process.env.NEXT_PUBLIC_DEMO_MODE === 'true',
 };

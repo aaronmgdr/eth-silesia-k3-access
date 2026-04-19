@@ -32,6 +32,14 @@ export function Footer() {
           Privacy Policy
         </Link>
         <span style={{ margin: '0 12px' }}>·</span>
+        <a href={`${site.sourceUrl}/blob/main/LICENSE`} target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'underline' }}>
+          GPL-3.0
+        </a>
+        <span style={{ margin: '0 12px' }}>·</span>
+        <a href={site.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'underline' }}>
+          Source
+        </a>
+        <span style={{ margin: '0 12px' }}>·</span>
         <a href={`mailto:${site.contactEmail}`} style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'underline' }}>
           {site.contactEmail}
         </a>

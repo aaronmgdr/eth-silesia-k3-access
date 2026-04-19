@@ -1,5 +1,6 @@
 {
-  "name": "eniri",
+  "name": "k3-access",
+  "license": "GPL-3.0-or-later",
   "private": true,
   "scripts": {
     "dev": "pnpm --filter frontend dev",
