@@ -24,7 +24,7 @@ export function ConnectButton() {
       onClick={() => open()}
       style={{ fontSize: '14px', padding: '12px 24px' }}
     >
-      Sign with Ethereum
+      Sign-In with Ethereum
     </button>
   );
 }
